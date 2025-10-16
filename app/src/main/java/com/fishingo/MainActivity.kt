@@ -1,4 +1,5 @@
 package com.fishingo
+import android.location.Location
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -105,169 +106,141 @@ fun AppNavigator(){
     }
 }
 
-
 @Composable
-
 fun GoFishScreen() {
-
     val context = LocalContext.current
-
+    val activity = context as Activity
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    val activity = context as Activity
-
     var userLocation by remember { mutableStateOf<GeoPoint?>(null) }
+    var locationPermissionGranted by remember { mutableStateOf(false) }
 
-
-
+    // Cerere permisiuni
     LaunchedEffect(Unit) {
+        val fineLocation = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        )
+        val coarseLocation = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        )
 
-        if (ContextCompat.checkSelfPermission(
-
-                context,
-
-                Manifest.permission.ACCESS_FINE_LOCATION
-
-            ) != PackageManager.PERMISSION_GRANTED ||
-
-            ContextCompat.checkSelfPermission(
-
-                context,
-
-                Manifest.permission.ACCESS_COARSE_LOCATION
-
-            ) != PackageManager.PERMISSION_GRANTED
-
+        if (fineLocation != PackageManager.PERMISSION_GRANTED ||
+            coarseLocation != PackageManager.PERMISSION_GRANTED
         ) {
-
             ActivityCompat.requestPermissions(
-
                 activity,
-
                 arrayOf(
-
                     Manifest.permission.ACCESS_FINE_LOCATION,
-
                     Manifest.permission.ACCESS_COARSE_LOCATION
-
                 ),
-
                 1001
-
             )
-
         } else {
-
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-
-                if (location != null) {
-
-                    userLocation = GeoPoint(location.latitude, location.longitude)
-
-                }
-
-            }
-
+            locationPermissionGranted = true
         }
-
     }
 
-
-
-    // 🟢 BOX = strat superior: putem pune harta + overlay-urile (barele)
+    // Obținerea locației
+    LaunchedEffect(locationPermissionGranted) {
+        if (locationPermissionGranted) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    userLocation = GeoPoint(it.latitude, it.longitude)
+                }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-
-
-        // Harta pe stratul de bază
+        // MapView în Compose
+        val mapView = remember { MapView(context) }
 
         AndroidView(
+            factory = { mapView.apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                controller.setZoom(18.0)
 
-            factory = { ctx ->
+                // ✅ Corecție: folosim controller local pentru a evita "unresolved reference"
+                val controller = this.controller
 
-                MapView(ctx).apply {
-
-                    setTileSource(TileSourceFactory.MAPNIK)
-
-                    setMultiTouchControls(true)
-
-                    controller.setZoom(15.0)
-
-                    userLocation?.let {
-
-                        controller.setCenter(it)
-
-                        val marker = Marker(this)
-
-                        marker.position = it
-
-                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-
-                        marker.icon = ContextCompat.getDrawable(ctx, R.drawable.ic_launcher_foreground)
-
-                        overlayManager.add(marker)
-
+                setOnTouchListener { _, event ->
+                    when (event.pointerCount) {
+                        1 -> true // blocăm pan complet cu un deget
+                        2 -> {
+                            val action = event.actionMasked
+                            if (action == android.view.MotionEvent.ACTION_UP ||
+                                action == android.view.MotionEvent.ACTION_POINTER_UP
+                            ) {
+                                // când utilizatorul termină zoom-ul, recentrăm pe marker
+                                userLocation?.let { loc ->
+                                    // ✅ folosim controller local (nu dă eroare)
+                                    controller.animateTo(loc)
+                                }
+                            }
+                            false // lăsăm zoom-ul să funcționeze normal
+                        }
+                        else -> true
                     }
-
                 }
+            }},
+            modifier = Modifier.fillMaxSize(),
+            update = { map ->
+                userLocation?.let { location ->
+                    // Centrează harta
+                    map.controller.setCenter(location)
+                    map.overlays.clear()
 
-            },
+                    // Marker personal
+                    val marker = Marker(map)
+                    marker.position = location
+                    marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    marker.icon = ContextCompat.getDrawable(context, R.drawable.ic_launcher_foreground)
+                    map.overlays.add(marker)
 
-            modifier = Modifier.fillMaxSize()
+                    // Overlay locație curentă
+                    val locationOverlay = org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay(
+                        org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider(context),
+                        map
+                    )
+                    locationOverlay.enableMyLocation()
+                    map.overlays.add(locationOverlay)
 
+                    // Centrează automat pe prima locație detectată
+                    locationOverlay.runOnFirstFix {
+                        activity.runOnUiThread {
+                            map.controller.animateTo(locationOverlay.myLocation)
+                        }
+                    }
+                }
+            }
         )
 
-
-
-        // Bara de sus — strat peste hartă
-
+        // Bara de sus
         Box(
-
             modifier = Modifier
-
                 .fillMaxWidth()
-
                 .height(50.dp)
-
                 .background(Color(0xFFD2B48C))
-
                 .align(Alignment.TopCenter),
-
             contentAlignment = Alignment.Center
-
         ) {
-
             Text("Go Fish", fontSize = 20.sp)
-
         }
 
-
-
-        // Bara de jos — strat peste hartă
-
+        // Bara de jos
         Box(
-
             modifier = Modifier
-
                 .fillMaxWidth()
-
                 .height(50.dp)
-
                 .background(Color(0xFFD2B48C))
-
                 .align(Alignment.BottomCenter),
-
             contentAlignment = Alignment.Center
-
         ) {
-
             Text("FishinGo Footer", fontSize = 16.sp)
-
         }
-
     }
-
 }
 
 @Preview(showBackground = true)
