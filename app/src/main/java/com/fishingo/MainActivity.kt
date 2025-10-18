@@ -115,6 +115,8 @@ fun GoFishScreen() {
     var userLocation by remember { mutableStateOf<GeoPoint?>(null) }
     var locationPermissionGranted by remember { mutableStateOf(false) }
 
+    val mapView = remember { MapView(context) }
+
     // Cerere permisiuni
     LaunchedEffect(Unit) {
         val fineLocation = ContextCompat.checkSelfPermission(
@@ -151,10 +153,39 @@ fun GoFishScreen() {
         }
     }
 
+    // ✅ Adăugăm un efect care ascultă live locația
+    LaunchedEffect(locationPermissionGranted) {
+        if (locationPermissionGranted) {
+            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                2000 // actualizare la fiecare 2 secunde
+            ).setMinUpdateDistanceMeters(1f) // dacă te miști măcar 1 metru
+                .build()
+
+            val locationCallback = object : com.google.android.gms.location.LocationCallback() {
+                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                    val location = result.lastLocation ?: return
+                    val newGeoPoint = GeoPoint(location.latitude, location.longitude)
+                    userLocation = newGeoPoint
+
+                    // 🔥 Centrează harta pe noua locație
+                    mapView.controller.animateTo(newGeoPoint)
+                }
+            }
+
+            // ✅ Important: folosim context.mainLooper ca să nu crape UI-ul
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                context.mainLooper
+            )
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
         // MapView în Compose
-        val mapView = remember { MapView(context) }
+
 
         AndroidView(
             factory = { mapView.apply {
