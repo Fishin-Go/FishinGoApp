@@ -22,6 +22,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,11 +59,15 @@ class MainActivity : ComponentActivity() {
         )
         conf.userAgentValue = packageName
         conf.osmdroidTileCache=ctx.cacheDir
+
+        // Initialize UserManager
+        UserManager.initialize(applicationContext)
+
         setContent {
             AppNavigator()
-                }
-            }
         }
+    }
+}
 
 @Composable
 fun MainMenu(onGoFishClick:()->Unit) {
@@ -92,22 +101,169 @@ fun MainMenu(onGoFishClick:()->Unit) {
 
 @Composable
 fun AppNavigator(){
-    val navController= rememberNavController()
+    val navController = rememberNavController()
+    val isLoggedIn by UserManager.isLoggedIn
 
-    NavHost(navController = navController,startDestination="main_menu"){
+    NavHost(
+        navController = navController,
+        startDestination = if (isLoggedIn) "main_menu" else "auth"
+    ){
+        composable("auth"){
+            AuthScreen(onLoginSuccess = {
+                navController.navigate("main_menu") {
+                    popUpTo("auth") { inclusive = true }
+                }
+            })
+        }
         composable("main_menu"){
-            MainMenu(onGoFishClick={
+            MainMenu(onGoFishClick = {
                 navController.navigate("go_fish")
             })
         }
         composable("go_fish"){
-            GoFishScreen()
+            GoFishScreen(navController = navController)
         }
     }
 }
 
 @Composable
-fun GoFishScreen() {
+fun ProfileTopBar(navController: androidx.navigation.NavController) {
+    val currentUser by UserManager.currentUser
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .background(Color(0xFFD2B48C))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Go Fish",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Box {
+                Button(
+                    onClick = { expanded = !expanded },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF8B7355)
+                    ),
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Text(
+                        text = currentUser?.username ?: "User",
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (expanded) "▲" else "▼",
+                        fontSize = 12.sp,
+                        color = Color.White
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    // Profile Picture
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .background(
+                                    Color(0xFF1E88E5),
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = currentUser?.username?.first()?.uppercase() ?: "U",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = currentUser?.username ?: "User",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = currentUser?.email ?: "",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+
+                    Divider()
+
+                    DropdownMenuItem(
+                        text = { Text("Account Settings") },
+                        onClick = {
+                            expanded = false
+                            // TODO: Navigate to settings
+                        },
+                        leadingIcon = {
+                            Text("⚙️", fontSize = 20.sp)
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("Profile") },
+                        onClick = {
+                            expanded = false
+                            // TODO: Navigate to profile
+                        },
+                        leadingIcon = {
+                            Text("👤", fontSize = 20.sp)
+                        }
+                    )
+
+                    Divider()
+
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Logout",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            UserManager.logout()
+                            navController.navigate("auth") {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                        leadingIcon = {
+                            Text("🚪", fontSize = 20.sp)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GoFishScreen(navController: androidx.navigation.NavController) {
     val context = LocalContext.current
     val activity = context as Activity
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -153,7 +309,7 @@ fun GoFishScreen() {
         }
     }
 
-    // ✅ Adăugăm un efect care ascultă live locația
+    // Adăugăm un efect care ascultă live locația
     LaunchedEffect(locationPermissionGranted) {
         if (locationPermissionGranted) {
             val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
@@ -168,12 +324,12 @@ fun GoFishScreen() {
                     val newGeoPoint = GeoPoint(location.latitude, location.longitude)
                     userLocation = newGeoPoint
 
-                    // 🔥 Centrează harta pe noua locație
+                    // Centrează harta pe noua locație
                     mapView.controller.animateTo(newGeoPoint)
                 }
             }
 
-            // ✅ Important: folosim context.mainLooper ca să nu crape UI-ul
+            // Important: folosim context.mainLooper ca să nu crape UI-ul
             fusedLocationClient.requestLocationUpdates(
                 locationRequest,
                 locationCallback,
@@ -185,15 +341,13 @@ fun GoFishScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
 
         // MapView în Compose
-
-
         AndroidView(
             factory = { mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 controller.setZoom(18.0)
 
-                // ✅ Corecție: folosim controller local pentru a evita "unresolved reference"
+                // Corecție: folosim controller local pentru a evita "unresolved reference"
                 val controller = this.controller
 
                 setOnTouchListener { _, event ->
@@ -206,7 +360,7 @@ fun GoFishScreen() {
                             ) {
                                 // când utilizatorul termină zoom-ul, recentrăm pe marker
                                 userLocation?.let { loc ->
-                                    // ✅ folosim controller local (nu dă eroare)
+                                    // folosim controller local (nu dă eroare)
                                     controller.animateTo(loc)
                                 }
                             }
@@ -248,17 +402,8 @@ fun GoFishScreen() {
             }
         )
 
-        // Bara de sus
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .background(Color(0xFFD2B48C))
-                .align(Alignment.TopCenter),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Go Fish", fontSize = 20.sp)
-        }
+        // Bara de sus - UPDATED WITH PROFILE
+        ProfileTopBar(navController = navController)
 
         // Bara de jos
         Box(
