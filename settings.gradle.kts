@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "FishinGo"
 include(":app")
+include(":backend")
