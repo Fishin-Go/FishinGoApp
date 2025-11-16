@@ -87,6 +87,8 @@ dependencies {
 
     // Preferences
     implementation(libs.androidx.preference.ktx)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.ui)
 
     // Testing
     testImplementation(libs.junit)
