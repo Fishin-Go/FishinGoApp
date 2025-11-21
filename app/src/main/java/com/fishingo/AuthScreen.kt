@@ -1,8 +1,8 @@
 package com.fishingo
+
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +23,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fishingo.network.ApiClient
+import com.fishingo.network.LoginRequest
+import com.fishingo.network.RegisterRequest
+import kotlinx.coroutines.launch
 
 @Composable
 fun AuthScreen(onLoginSuccess: () -> Unit) {
@@ -48,7 +52,6 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Logo/Title
             Text(
                 text = "🎣",
                 fontSize = 72.sp,
@@ -70,7 +73,6 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Auth Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -84,7 +86,6 @@ fun AuthScreen(onLoginSuccess: () -> Unit) {
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Toggle between Login/Register
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -137,6 +138,7 @@ fun LoginForm(onLoginSuccess: () -> Unit) {
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -198,12 +200,28 @@ fun LoginForm(onLoginSuccess: () -> Unit) {
                 } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                     errorMessage = "Please enter a valid email"
                 } else {
-                    // In a real app, this would validate with backend
-                    val success = UserManager.login(email.substringBefore("@"), email)
-                    if (success) {
-                        onLoginSuccess()
-                    } else {
-                        errorMessage = "Login failed. Please try again."
+                    scope.launch {
+                        try {
+                            val response = ApiClient.authApi.login(
+                                LoginRequest(
+                                    email = email,
+                                    password = password
+                                )
+                            )
+
+                            if (response.isSuccessful && response.body() != null) {
+                                val user = response.body()!!
+                                // ⬇️ store logged-in user
+                                UserManager.setLoggedInUser(user)
+                                onLoginSuccess()
+                            } else if (response.code() == 401) {
+                                errorMessage = "Invalid email or password"
+                            } else {
+                                errorMessage = "Login failed (${response.code()})"
+                            }
+                        } catch (e: Exception) {
+                            errorMessage = "Could not reach server. Please try again."
+                        }
                     }
                 }
             },
@@ -233,6 +251,7 @@ fun RegisterForm(onRegisterSuccess: () -> Unit) {
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -345,11 +364,29 @@ fun RegisterForm(onRegisterSuccess: () -> Unit) {
                         errorMessage = "Passwords do not match"
                     }
                     else -> {
-                        val success = UserManager.register(username, email, password)
-                        if (success) {
-                            onRegisterSuccess()
-                        } else {
-                            errorMessage = "Registration failed. Please try again."
+                        scope.launch {
+                            try {
+                                val response = ApiClient.authApi.register(
+                                    RegisterRequest(
+                                        username = username,
+                                        email = email,
+                                        password = password
+                                    )
+                                )
+
+                                if (response.isSuccessful && response.body() != null) {
+                                    val user = response.body()!!
+                                    // ⬇️ store newly registered user
+                                    UserManager.setLoggedInUser(user)
+                                    onRegisterSuccess()
+                                } else if (response.code() == 409) {
+                                    errorMessage = "Email is already registered"
+                                } else {
+                                    errorMessage = "Registration failed (${response.code()})"
+                                }
+                            } catch (e: Exception) {
+                                errorMessage = "Could not reach server. Please try again."
+                            }
                         }
                     }
                 }

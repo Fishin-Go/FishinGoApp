@@ -1,39 +1,70 @@
 package com.fishingo.backend
 
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.routing.*
+import com.fishingo.backend.controller.userRoutes
+import com.fishingo.backend.controller.waterBodyRoutes
+import com.fishingo.backend.database.DatabaseFactory
+import com.fishingo.backend.repository.UserRepository
+import com.fishingo.backend.repository.WaterBodyRepository
+import com.fishingo.backend.service.UserService
+import com.fishingo.backend.service.WaterBodyService
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-
-import com.fishingo.backend.service.*
-import com.fishingo.backend.repository.*
-import com.fishingo.backend.controller.*
+import io.ktor.server.application.*
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.request.uri
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import org.slf4j.LoggerFactory
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+    embeddedServer(
+        Netty,
+        port = 8080,
+        host = "0.0.0.0"
+    ) {
         module()
     }.start(wait = true)
 }
 
 fun Application.module() {
-    // Enable JSON
+    // Logger for error reporting
+    val log = LoggerFactory.getLogger("FishinGo")
+
+    // 1. Connect to Aiven Postgres (via Exposed / Hikari)
+    DatabaseFactory.init()
+
+    // 2. JSON (kotlinx.serialization) for request/response bodies
     install(ContentNegotiation) {
         json()
     }
 
-    // Initialize services
+    // 3. Log all unhandled exceptions and return 500 instead of crashing
+    install(StatusPages) {
+        exception<Throwable> { call, cause ->
+            log.error("Unhandled error on ${call.request.uri}", cause)
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                "Internal server error"
+            )
+        }
+    }
+
+    // 4. Wire repositories + services
     val userService = UserService(UserRepository())
-    val fishService = FishService(FishRepository())
-    val catchService = CatchService(CatchRepository())
     val waterBodyService = WaterBodyService(WaterBodyRepository())
 
-    // Register routes
+    // 5. Routes (HTTP endpoints)
     routing {
+        // Simple test endpoint
+        get("/") {
+            call.respondText("FishinGo backend is running ✅")
+        }
+
         userRoutes(userService)
-        fishRoutes(fishService)
-        catchRoutes(catchService)
         waterBodyRoutes(waterBodyService)
+        // catchRoutes(...)  // later
     }
 }
