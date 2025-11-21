@@ -1,22 +1,30 @@
 package com.fishingo.backend.database
 
-import com.fishingo.backend.model.*
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
 
 object DatabaseFactory {
+
     fun init() {
-        Database.connect(
-            url = "jdbc:postgresql://localhost:5432/fishingo",
-            driver = "org.postgresql.Driver",
-            user = "postgres",
-            password = "postgres"   // <-- set yours
-        )
-        // create the tables if missing
-        transaction {
-            SchemaUtils.create(UserTable, WaterBodyTable, FishTable, CatchTable)
+        val dataSource = createHikariDataSource()
+        Database.connect(dataSource)
+    }
+
+    private fun createHikariDataSource(): HikariDataSource {
+        val config = HikariConfig().apply {
+            jdbcUrl = "jdbc:postgresql://fishingo-db-fishingoapp.c.aivencloud.com:14892/defaultdb?sslmode=require"
+            username = "avnadmin"
+            password = "your-aiven-password"   // <- your password
+
+            driverClassName = "org.postgresql.Driver"
+
+            maximumPoolSize = 5
+            isAutoCommit = false
+            transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            validate()
         }
-        println("DB connected & schema ensured.")
+
+        return HikariDataSource(config)
     }
 }

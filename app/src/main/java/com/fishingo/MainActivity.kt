@@ -72,6 +72,6 @@ fun AppNavigator() {
             )
         }
         composable("go_fish") { GoFishScreen() }
-        composable("inventory") { InventoryScreen(navController = navController) }
+        composable("inventory") { FishnetScreen(navController = navController) }
     }
 }
