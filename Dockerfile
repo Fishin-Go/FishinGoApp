@@ -8,7 +8,7 @@ WORKDIR /app
 COPY gradle gradle
 COPY gradlew .
 COPY settings.gradle.kts .
-COPY build.gradle.kts .
+COPY backend/build.gradle.kts .
 
 # Copy the backend module
 COPY backend ./backend
