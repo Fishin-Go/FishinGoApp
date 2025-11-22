@@ -1,37 +1,33 @@
-# ---------- BUILD STAGE ----------
-FROM eclipse-temurin:21-jdk-jammy AS build
+# ---------- 1) BUILD STAGE ----------
+FROM eclipse-temurin:21-jdk-alpine AS build
 
-# Work from /app in the container
-WORKDIR /app
-
-# Copy Gradle wrapper + top-level build files
-COPY gradle gradle
-COPY gradlew .
-COPY settings.gradle.kts .
-COPY backend/build.gradle.kts .
-
-# Copy the backend module
-COPY backend ./backend
-
-# Make gradlew executable and build ONLY the backend module
-# We override JVM args here so we don't need to touch your local gradle.properties
-RUN chmod +x ./gradlew && \
-    ./gradlew -p backend clean build -x test -x check \
-      -Dorg.gradle.jvmargs="-Xmx512m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8"
-
-# ---------- RUNTIME STAGE ----------
-FROM eclipse-temurin:21-jre-jammy AS runtime
+# Limit Gradle memory so it fits in small containers
+ENV GRADLE_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
 
 WORKDIR /app
 
-# Copy the built jar from the build stage
-COPY --from=build /app/backend/build/libs/*.jar app.jar
+# Copy the entire repo into the image
+COPY . .
 
-# Port your Ktor/Spring app listens on (change if you use something else)
+# Make sure the Gradle wrapper is executable
+RUN chmod +x ./gradlew
+
+# Build ONLY the backend module
+RUN ./gradlew :backend:build --no-daemon -x test
+
+# ---------- 2) RUNTIME STAGE ----------
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Copy the backend JAR that you showed in your screenshot
+COPY --from=build /app/backend/build/libs/backend.jar app.jar
+
+# Limit JVM memory at runtime too (this one affects your Ktor app)
+ENV JAVA_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
+
+# Render routes HTTP traffic to this port
 EXPOSE 8080
 
-# Small heap + metaspace for the running app
-ENV JAVA_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8"
-
-# Start the server
+# Start the Ktor application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
