@@ -15,7 +15,7 @@ object DatabaseFactory {
         val config = HikariConfig().apply {
             jdbcUrl = "jdbc:postgresql://fishingo-db-fishingoapp.c.aivencloud.com:14892/defaultdb?sslmode=require"
             username = "avnadmin"
-            password = "your-aiven-password"   // <- your password
+            password = System.getenv("DB_PASSWORD")   // <- your password
 
             driverClassName = "org.postgresql.Driver"
 
