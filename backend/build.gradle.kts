@@ -1,12 +1,12 @@
 plugins {
     kotlin("jvm") version "2.0.21"
     kotlin("plugin.serialization") version "2.0.21"
-    id("application")
+    application
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 dependencies {
     implementation("org.mindrot:jbcrypt:0.4")
-
 
     implementation(platform("io.ktor:ktor-bom:2.3.6"))
 
@@ -28,10 +28,12 @@ dependencies {
 }
 
 application {
-    // This must match your main() file package + name
+    // This MUST match the package where your fun main() is
     mainClass.set("com.fishingo.backend.ApplicationKt")
 }
 
 kotlin {
     jvmToolchain(21)
 }
+
+// ❌ NO ShadowJar block here anymore
