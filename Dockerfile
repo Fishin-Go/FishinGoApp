@@ -1,10 +1,10 @@
 # ---------- 1) BUILD STAGE ----------
 FROM eclipse-temurin:21-jdk-alpine AS build
 
-# Limit Gradle memory so it fits in small containers
-ENV GRADLE_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
-
 WORKDIR /app
+
+# Limit Gradle memory so it fits into Render's container
+ENV GRADLE_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
 
 # Copy the entire repo into the image
 COPY . .
@@ -12,18 +12,18 @@ COPY . .
 # Make sure the Gradle wrapper is executable
 RUN chmod +x ./gradlew
 
-# Build ONLY the backend module
-RUN ./gradlew :backend:build --no-daemon -x test
+# Build ONLY the backend fat JAR (shadowJar), NOT :backend:build
+RUN ./gradlew :backend:shadowJar --no-daemon -x test
 
 # ---------- 2) RUNTIME STAGE ----------
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Copy the backend JAR that you showed in your screenshot
-COPY --from=build /app/backend/build/libs/backend.jar app.jar
+# Copy the fat JAR that shadowJar produced (backend-all.jar by default)
+COPY --from=build /app/backend/build/libs/backend-all.jar app.jar
 
-# Limit JVM memory at runtime too (this one affects your Ktor app)
+# Limit JVM memory at runtime too
 ENV JAVA_OPTS="-Xmx512m -XX:MaxMetaspaceSize=256m"
 
 # Render routes HTTP traffic to this port
