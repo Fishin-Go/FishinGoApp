@@ -47,8 +47,6 @@ fun GoFishScreen() {
     val currentUser by UserManager.currentUser
     val fishRegions = remember { loadFishRegions(context) }
 
-    var clickCount by remember { mutableStateOf(0) }
-
     // Request permissions
     LaunchedEffect(Unit) {
         val fineLocation = ContextCompat.checkSelfPermission(
@@ -193,54 +191,106 @@ fun GoFishScreen() {
             Text("FishinGo Footer", fontSize = 16.sp)
         }
 
-        // Show how many times the button was pressed
-        Text(
-            text = "Test clicks: $clickCount",
-            color = Color.White,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = (-80).dp)
-        )
-
-        // Floating TEST CATCH button (centered, half-over footer)
+        // Floating TEST CATCH button (centered over footer)
         Button(
             onClick = {
-                clickCount++
-
-                val user = currentUser ?: return@Button
-
-                // For now: always Transilvania
-                val region = "Transilvania"
-                val fishList = fishRegions[region]
-
-                if (fishList.isNullOrEmpty()) {
-                    Toast.makeText(context, "No fish list for $region", Toast.LENGTH_SHORT).show()
+                val user = currentUser ?: run {
+                    Toast.makeText(context, "Not logged in", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
-                val randomFish = fishList.random()
-                val loc = userLocation
+                // ✅ OPTION A – REAL GPS (WORKING VERSION, KEPT COMMENTED FOR NOW)
+                // val loc = userLocation ?: run {
+                //     Toast.makeText(context, "Location not available yet", Toast.LENGTH_SHORT).show()
+                //     return@Button
+                // }
 
-                val request = NewCatchRequest(
-                    fishName = randomFish,
-                    region = region,
-                    locationName = "Unknown water",
-                    latitude = loc?.latitude,
-                    longitude = loc?.longitude,
-                    description = "Test catch from Transilvania button"
-                )
+                // ✅ OPTION B – HARDCODED TEST COORDS (Cluj, near Someșul Mic)
+                val loc = GeoPoint(46.772325, 23.583198)
 
                 scope.launch {
+                    // 1) Determine region from these coordinates
+                    val region = getRegionForLocation(
+                        context = context,
+                        latitude = loc.latitude,
+                        longitude = loc.longitude
+                    ) ?: run {
+                        Toast.makeText(
+                            context,
+                            "Could not determine region for this location",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+
+                    // 2) Get fish list for that region
+                    val fishList = fishRegions[region]
+                    if (fishList.isNullOrEmpty()) {
+                        Toast.makeText(
+                            context,
+                            "No fish data for region $region",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+
+                    val randomFish = fishList.random()
+
+                    // 3) Check for water using Overpass (search a bit wider so we actually see something)
+                    val nearbyWater = findNearbyWaterBody(
+                        context = context,
+                        latitude = loc.latitude,
+                        longitude = loc.longitude,
+                        radiusMeters = 200   // was 50
+                    )
+
+                    if (nearbyWater == null) {
+                        Toast.makeText(
+                            context,
+                            "No mapped water within ~200m. Try closer to a river or lake.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@launch
+                    }
+
+// Show how far the nearest water is (for debugging)
+                    val distance = nearbyWater.distanceMeters ?: -1.0
+
+                    val locationName = nearbyWater.name
+                        ?: when {
+                            nearbyWater.type != null -> "Unnamed ${nearbyWater.type}"
+                            else -> "Nearby water"
+                        }
+
+// Optional: debug toast with distance
+                    Toast.makeText(
+                        context,
+                        if (distance >= 0) "Nearest water: $locationName (~${distance.toInt()}m away)"
+                        else "Nearest water: $locationName",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // 4) Build request and send to backend
+                    val request = NewCatchRequest(
+                        fishName = randomFish,
+                        region = region,
+                        locationName = locationName,
+                        latitude = loc.latitude,
+                        longitude = loc.longitude,
+                        description = "Catch from $region"
+                    )
+
                     try {
                         val response = ApiClient.catchApi.createCatch(
                             userId = user.id,
                             body = request
                         )
+
                         if (response.isSuccessful) {
                             Toast.makeText(
                                 context,
-                                "Catch sent! (${response.code()})",
-                                Toast.LENGTH_SHORT
+                                "You caught $randomFish at $locationName!",
+                                Toast.LENGTH_LONG
                             ).show()
                         } else {
                             Toast.makeText(
@@ -253,14 +303,14 @@ fun GoFishScreen() {
                         Toast.makeText(
                             context,
                             "Network error: ${e.message}",
-                            Toast.LENGTH_LONG
+                            Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(y = (-25).dp) // half of 50dp footer height
+                .offset(y = (-25).dp)
         ) {
             Text("TEST CATCH")
         }

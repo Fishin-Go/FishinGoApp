@@ -87,6 +87,7 @@ dependencies {
 
     // JSON
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     //Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
