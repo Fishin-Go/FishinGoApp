@@ -2,307 +2,338 @@ package com.fishingo
 
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
-import java.util.Locale
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import org.json.JSONObject
+import java.text.Normalizer
+import kotlin.math.*
+
+// -------------------------
+// Data classes
+// -------------------------
+
+data class NearbyWaterBody(
+    val name: String?,
+    val type: String?,
+    val distanceMeters: Double?
+)
+
+// -------------------------
+//  REGION (county -> JSON)
+// -------------------------
+
+private var cachedCountyRegion: Map<String, String>? = null
+
+private fun loadCountyRegionMap(context: Context): Map<String, String> {
+    cachedCountyRegion?.let { return it }
+
+    val inputStream = context.resources.openRawResource(R.raw.county_region)
+    val jsonText = inputStream.bufferedReader().use { it.readText() }
+
+    val root = JSONObject(jsonText)
+    val result = mutableMapOf<String, String>()
+
+    val keys = root.keys()
+    while (keys.hasNext()) {
+        val county = keys.next()
+        val region = root.getString(county)
+        result[normalizeCountyName(county)] = region
+    }
+
+    cachedCountyRegion = result
+    return result
+}
+
+private fun normalizeCountyName(name: String): String {
+    var n = Normalizer.normalize(name, Normalizer.Form.NFD)
+        .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+        .lowercase()
+
+    n = n.replace("ț", "t")
+        .replace("ţ", "t")
+        .replace("ș", "s")
+        .replace("ş", "s")
+        .replace("ă", "a")
+        .replace("â", "a")
+        .replace("î", "i")
+
+    return n.trim()
+}
 
 /**
- * Geo helper functions:
- * - getRegionForLocation: lat/lon -> county -> macro-region
- * - findNearbyWaterBody: lat/lon -> any water feature within radius (Overpass)
- * - getWaterBodyNameForLocation: optional, single-point water name via Nominatim
- */
-
-// -----------------------------------------------------------------------------
-// Public API
-// -----------------------------------------------------------------------------
-
-/**
- * Return macro-region name ("Transilvania", "Moldova", etc.) for a location,
- * using Nominatim -> county -> hardcoded county->region mapping.
+ * Uses Nominatim reverse geocoding to get the county for a lat/lon,
+ * then maps the county to your region (Transilvania, Moldova, etc.)
+ * using res/raw/county_region.json.
  */
 suspend fun getRegionForLocation(
     context: Context,
     latitude: Double,
     longitude: Double
-): String? {
-    val address: JsonObject? = withContext(Dispatchers.IO) {
-        getAddressFromNominatim(latitude, longitude)
-    }
+): String? = withContext(Dispatchers.IO) {
+    val TAG = "GeoRegion"
 
-    if (address == null) {
-        Log.w("GeoUtils", "getRegionForLocation: address is null")
-        return null
-    }
+    // ⚠️ IMPORTANT: replace with your real email (you already used one that worked)
+    val emailParam = "cosminserban2003@gmail.com"
 
-    val countyRaw = address["county"]?.asString
-    if (countyRaw.isNullOrBlank()) {
-        Log.w("GeoUtils", "getRegionForLocation: county missing in address: $address")
-        return null
-    }
+    val url =
+        "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$latitude&lon=$longitude&zoom=10&addressdetails=1&email=$emailParam"
 
-    val countyNorm = normalizeCountyName(countyRaw)
-    val region = mapCountyToRegion(countyNorm)
+    try {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "FishinGo/1.0 ($emailParam)")
+            .build()
 
-    Log.d("GeoUtils", "County '$countyRaw' (normalized: '$countyNorm') mapped to region '$region'")
-    return region
-}
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Nominatim error: ${response.code}")
+                return@withContext null
+            }
 
-/**
- * Optional: try to get water body name (river/lake/etc.) exactly at the point.
- * Not used for 50m detection, but kept for debugging.
- */
-suspend fun getWaterBodyNameForLocation(
-    context: Context,
-    latitude: Double,
-    longitude: Double
-): String? {
-    val address: JsonObject? = withContext(Dispatchers.IO) {
-        getAddressFromNominatim(latitude, longitude)
-    }
+            val jsonText = response.body?.string() ?: return@withContext null
+            Log.d(TAG, "Nominatim raw: $jsonText")
 
-    if (address == null) {
-        Log.e("GeoUtils", "getWaterBodyNameForLocation: address is NULL for lat=$latitude lon=$longitude")
-        return null
-    }
+            val root = JSONObject(jsonText)
+            val address = root.optJSONObject("address") ?: return@withContext null
 
-    Log.d("GeoUtils", "Reverse-geocode full address JSON:\n$address")
+            val county =
+                address.optString("county").takeIf { it.isNotBlank() }
+                    ?: address.optString("state").takeIf { it.isNotBlank() }
+                    ?: address.optString("region").takeIf { it.isNotBlank() }
 
-    val waterKeys = listOf("water", "river", "lake", "reservoir", "canal", "sea")
-    for (key in waterKeys) {
-        val value = address[key]?.asString
-        if (!value.isNullOrBlank()) {
-            Log.d("GeoUtils", "Detected water body at point: key=$key value=$value")
-            return value
+            if (county.isNullOrBlank()) {
+                Log.w(TAG, "No county/state in Nominatim address")
+                return@withContext null
+            }
+
+            val normCounty = normalizeCountyName(county)
+            val map = loadCountyRegionMap(context)
+            val region = map[normCounty]
+
+            Log.d(TAG, "County='$county' (norm='$normCounty') -> region='$region'")
+            return@withContext region
         }
+    } catch (e: Exception) {
+        Log.e(TAG, "Error calling Nominatim", e)
+        return@withContext null
     }
-
-    Log.w("GeoUtils", "No water-related fields found in Nominatim address JSON.")
-    return null
 }
 
-/**
- * Result of a nearby water search using Overpass API.
- */
-data class NearbyWaterBody(
-    val name: String?,          // e.g. "Someșul Mic"
-    val type: String?,          // e.g. "river", "lake"
-    val distanceMeters: Double? // approximate distance from query point
-)
+// ----------------------
+//  Water / Overpass
+// ----------------------
 
 /**
- * Query Overpass API for any water feature within [radiusMeters] of lat/lon.
- * Returns the first match found, or null if nothing is mapped nearby.
+ * Strict water search with proper river geometry and priority:
+ * - Overpass finds water ways whose geometry intersects the [radiusMeters] circle
+ * - We compute distance from player to **all geometry points** of each way
+ * - We compute a "priority score" (named rivers/lakes > unnamed drains)
+ * - We return the best candidate within [radiusMeters]
  */
 suspend fun findNearbyWaterBody(
     context: Context,
     latitude: Double,
     longitude: Double,
-    radiusMeters: Int = 50
+    radiusMeters: Int
 ): NearbyWaterBody? = withContext(Dispatchers.IO) {
 
+    val TAG = "OverpassWater"
+
     val query = """
-        [out:json][timeout:10];
+        [out:json][timeout:25];
         (
-          way(around:$radiusMeters,$latitude,$longitude)["water"];
-          way(around:$radiusMeters,$latitude,$longitude)["waterway"];
-          way(around:$radiusMeters,$latitude,$longitude)["natural"="water"];
-          relation(around:$radiusMeters,$latitude,$longitude)["water"];
-          relation(around:$radiusMeters,$latitude,$longitude)["waterway"];
-          relation(around:$radiusMeters,$latitude,$longitude)["natural"="water"];
+          way(around:$radiusMeters,$latitude,$longitude)[water];
+          way(around:$radiusMeters,$latitude,$longitude)[waterway];
+          way(around:$radiusMeters,$latitude,$longitude)[natural=water];
+          way(around:$radiusMeters,$latitude,$longitude)[landuse=reservoir];
         );
-        out center 1;
+        out geom;
     """.trimIndent()
 
-    val url = URL("https://overpass-api.de/api/interpreter")
-    val conn = (url.openConnection() as HttpURLConnection).apply {
-        requestMethod = "POST"
-        doOutput = true
-        setRequestProperty(
-            "User-Agent",
-            "FishinGo/1.0 (cosminserban2003@gmail.com)"
-        )
-        setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-    }
-
     try {
-        val encoded = "data=" + URLEncoder.encode(query, "UTF-8")
-        conn.outputStream.use { out ->
-            out.write(encoded.toByteArray())
-        }
+        val url = "https://overpass-api.de/api/interpreter"
+        val body = "data=${query.replace("\n", " ")}"
 
-        val code = conn.responseCode
-        if (code != HttpURLConnection.HTTP_OK) {
-            Log.w("GeoUtils", "Overpass HTTP $code")
-            return@withContext null
-        }
-
-        val jsonText = conn.inputStream.bufferedReader().use { it.readText() }
-        Log.d("GeoUtils", "Overpass raw JSON: $jsonText")
-
-        val gson = Gson()
-        val root = gson.fromJson(jsonText, JsonObject::class.java)
-        val elements = root["elements"]?.asJsonArray ?: return@withContext null
-        if (elements.size() == 0) {
-            Log.d("GeoUtils", "No water elements within $radiusMeters m")
-            return@withContext null
-        }
-
-        val elem = elements[0].asJsonObject
-        val tags = elem["tags"]?.asJsonObject
-
-        val name = tags?.get("name")?.asString
-        val waterType =
-            tags?.get("water")?.asString
-                ?: tags?.get("waterway")?.asString
-                ?: tags?.get("natural")?.asString
-
-        val center = elem["center"]?.asJsonObject
-        val waterLat = center?.get("lat")?.asDouble
-        val waterLon = center?.get("lon")?.asDouble
-
-        var distance: Double? = null
-        if (waterLat != null && waterLon != null) {
-            val result = FloatArray(1)
-            android.location.Location.distanceBetween(
-                latitude, longitude,
-                waterLat, waterLon,
-                result
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url(url)
+            .post(
+                RequestBody.create(
+                    "application/x-www-form-urlencoded".toMediaType(),
+                    body
+                )
             )
-            distance = result[0].toDouble()
-            Log.d("GeoUtils", "Nearest water distance ≈ ${distance} m")
-        }
+            .build()
 
-        NearbyWaterBody(
-            name = name,
-            type = waterType,
-            distanceMeters = distance
-        )
-    } catch (e: Exception) {
-        Log.e("GeoUtils", "Error calling Overpass", e)
-        null
-    } finally {
-        conn.disconnect()
-    }
-}
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Overpass error: ${response.code}")
+                return@withContext null
+            }
 
-// -----------------------------------------------------------------------------
-// Internal helpers
-// -----------------------------------------------------------------------------
+            val jsonText = response.body?.string() ?: return@withContext null
+            Log.d(TAG, "Overpass raw response: $jsonText")
 
-/**
- * Reverse-geocode a point using Nominatim (OpenStreetMap).
- * Returns the "address" JSON object or null if call failed.
- */
-private fun getAddressFromNominatim(
-    latitude: Double,
-    longitude: Double
-): JsonObject? {
-    return try {
-        val url = URL(
-            "https://nominatim.openstreetmap.org/reverse" +
-                    "?lat=$latitude&lon=$longitude&format=jsonv2&addressdetails=1"
-        )
-        val conn = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            setRequestProperty(
-                "User-Agent",
-                "FishinGo/1.0 (cosminserban2003@gmail.com)"
+            val root = JSONObject(jsonText)
+            val elements = root.optJSONArray("elements") ?: return@withContext null
+            if (elements.length() == 0) {
+                Log.d(TAG, "No water elements in ${radiusMeters}m radius")
+                return@withContext null
+            }
+
+            var bestElement: JSONObject? = null
+            var bestDistance = Double.MAX_VALUE
+            var bestScore = Int.MIN_VALUE
+
+            for (i in 0 until elements.length()) {
+                val el = elements.getJSONObject(i)
+
+                // 1) Find minimal distance from player to this way's geometry
+                val geometry = el.optJSONArray("geometry")
+                var minDistForWay = Double.MAX_VALUE
+
+                if (geometry != null && geometry.length() > 0) {
+                    for (j in 0 until geometry.length()) {
+                        val pt = geometry.getJSONObject(j)
+                        val wLat = pt.getDouble("lat")
+                        val wLon = pt.getDouble("lon")
+                        val dist = haversineDistanceMeters(latitude, longitude, wLat, wLon)
+                        if (dist < minDistForWay) {
+                            minDistForWay = dist
+                        }
+                    }
+                } else {
+                    // Fallback: use center if geometry is missing
+                    val center = el.optJSONObject("center")
+                    if (center != null) {
+                        val wLat = center.getDouble("lat")
+                        val wLon = center.getDouble("lon")
+                        minDistForWay = haversineDistanceMeters(latitude, longitude, wLat, wLon)
+                    }
+                }
+
+                // If even the closest point on this way is outside radius, ignore it
+                if (minDistForWay > radiusMeters) continue
+
+                val tags = el.optJSONObject("tags")
+                val name = tags?.optString("name")?.takeIf { it.isNotBlank() }
+                val waterway = tags?.optString("waterway")?.takeIf { it.isNotBlank() }
+                val natural = tags?.optString("natural")?.takeIf { it.isNotBlank() }
+                val landuse = tags?.optString("landuse")?.takeIf { it.isNotBlank() }
+                val water = tags?.optString("water")?.takeIf { it.isNotBlank() }
+
+                // 2) Compute "priority" for this waterbody
+                val score = computeWaterPriority(
+                    name = name,
+                    waterway = waterway,
+                    natural = natural,
+                    landuse = landuse,
+                    water = water
+                )
+
+                // 3) Choose best by (score, then distance)
+                if (score > bestScore || (score == bestScore && minDistForWay < bestDistance)) {
+                    bestScore = score
+                    bestDistance = minDistForWay
+                    bestElement = el
+                }
+            }
+
+            if (bestElement == null) {
+                Log.d(TAG, "No suitable water element found within radius")
+                return@withContext null
+            }
+
+            val tags = bestElement.optJSONObject("tags")
+            val name = tags?.optString("name")?.takeIf { it.isNotBlank() }
+            val type =
+                tags?.optString("waterway")?.takeIf { it.isNotBlank() }
+                    ?: tags?.optString("natural")?.takeIf { it.isNotBlank() }
+                    ?: tags?.optString("landuse")?.takeIf { it.isNotBlank() }
+                    ?: tags?.optString("water")?.takeIf { it.isNotBlank() }
+
+            Log.d(
+                TAG,
+                "Chosen water WITHIN $radiusMeters m: name=$name type=$type dist=$bestDistance score=$bestScore"
+            )
+
+            return@withContext NearbyWaterBody(
+                name = name,
+                type = type,
+                distanceMeters = bestDistance
             )
         }
-
-        val code = conn.responseCode
-        if (code != HttpURLConnection.HTTP_OK) {
-            Log.w("GeoUtils", "Nominatim HTTP $code")
-            conn.disconnect()
-            return null
-        }
-
-        val jsonText = conn.inputStream.bufferedReader().use { it.readText() }
-        conn.disconnect()
-
-        val gson = Gson()
-        val root = gson.fromJson(jsonText, JsonObject::class.java)
-        val address = root["address"]?.asJsonObject
-
-        Log.d("GeoUtils", "Nominatim address JSON: $address")
-        address
     } catch (e: Exception) {
-        Log.e("GeoUtils", "Error calling Nominatim", e)
-        null
+        Log.e(TAG, "Error querying Overpass", e)
+        return@withContext null
     }
 }
 
-/**
- * Normalize county names so we can match regardless of diacritics / prefixes.
- */
-private fun normalizeCountyName(raw: String): String {
-    var s = raw.trim().lowercase(Locale.getDefault())
+// Score the "niceness" of a waterbody so we prefer real rivers/lakes with names
+private fun computeWaterPriority(
+    name: String?,
+    waterway: String?,
+    natural: String?,
+    landuse: String?,
+    water: String?
+): Int {
+    var score = 0
 
-    s = s.replace("județul", "")
-        .replace("judetul", "")
-        .replace("county", "")
-        .trim()
+    // Big rivers / streams first
+    if (waterway == "river" || water == "river") {
+        score += 120
+    } else if (waterway == "stream" || water == "stream") {
+        score += 110
+    }
 
-    s = s.replace("ă", "a")
-        .replace("â", "a")
-        .replace("î", "i")
-        .replace("ș", "s")
-        .replace("ş", "s")
-        .replace("ț", "t")
-        .replace("ţ", "t")
+    // Lakes / reservoirs / general water surfaces
+    if (natural == "water" ||
+        landuse == "reservoir" ||
+        water in listOf("lake", "pond", "reservoir")
+    ) {
+        score += 100
+    }
 
-    s = s.replace(Regex("\\s+"), " ")
-    return s
+    // Canals okay-ish
+    if (waterway == "canal") {
+        score += 60
+    }
+
+    // Drains / ditches are least interesting
+    if (waterway in listOf("drain", "ditch", "drainage", "drainage_channel")) {
+        score += 10
+    }
+
+    // Named features are almost always better than unnamed junk
+    if (!name.isNullOrBlank()) {
+        score += 40
+    }
+
+    return score
 }
 
-/**
- * Hardcoded mapping from normalized county name to macro-region.
- */
-private fun mapCountyToRegion(normalizedCounty: String): String? {
-    val transilvania = setOf(
-        "alba", "arad", "bihor", "bistrita-nasaud", "brasov",
-        "cluj", "covasna", "harghita", "hunedoara", "mures", "salaj"
-    )
+// ----------------------
+// Distance helper
+// ----------------------
 
-    val moldova = setOf(
-        "bacau", "botosani", "iasi", "neamt", "suceava", "vaslui", "vrancea", "galati"
-    )
-
-    val muntenia = setOf(
-        "arges", "braila", "buzau", "calarasi", "dambovita", "giurgiu",
-        "ialomita", "ilfov", "prahova", "teleorman"
-    )
-
-    val dobrogea = setOf(
-        "constanta", "tulcea"
-    )
-
-    val banat = setOf(
-        "timis", "caras-severin"
-    )
-
-    val oltenia = setOf(
-        "dolj", "gorj", "mehedinti", "olt", "valcea"
-    )
-
-    val bucharestNames = setOf(
-        "bucuresti", "bucharest"
-    )
-
-    return when {
-        normalizedCounty in transilvania -> "Transilvania"
-        normalizedCounty in moldova -> "Moldova"
-        normalizedCounty in muntenia || normalizedCounty in bucharestNames -> "Muntenia"
-        normalizedCounty in dobrogea -> "Dobrogea"
-        normalizedCounty in banat -> "Banat"
-        normalizedCounty in oltenia -> "Oltenia"
-        else -> null
-    }
+private fun haversineDistanceMeters(
+    lat1: Double,
+    lon1: Double,
+    lat2: Double,
+    lon2: Double
+): Double {
+    val R = 6371000.0 // Earth radius in meters
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = sin(dLat / 2).pow(2.0) +
+            cos(Math.toRadians(lat1)) *
+            cos(Math.toRadians(lat2)) *
+            sin(dLon / 2).pow(2.0)
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    return R * c
 }

@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -47,7 +46,9 @@ fun GoFishScreen() {
     val currentUser by UserManager.currentUser
     val fishRegions = remember { loadFishRegions(context) }
 
-    // Request permissions
+    // -----------------------------
+    //  Permissions
+    // -----------------------------
     LaunchedEffect(Unit) {
         val fineLocation = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -112,33 +113,37 @@ fun GoFishScreen() {
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // MapView
+        // -----------------------------
+        //  MapView
+        // -----------------------------
         AndroidView(
-            factory = { mapView.apply {
-                setTileSource(TileSourceFactory.MAPNIK)
-                setMultiTouchControls(true)
-                controller.setZoom(18.0)
+            factory = {
+                mapView.apply {
+                    setTileSource(TileSourceFactory.MAPNIK)
+                    setMultiTouchControls(true)
+                    controller.setZoom(18.0)
 
-                val controller = this.controller
+                    val controller = this.controller
 
-                setOnTouchListener { _, event ->
-                    when (event.pointerCount) {
-                        1 -> true
-                        2 -> {
-                            val action = event.actionMasked
-                            if (action == android.view.MotionEvent.ACTION_UP ||
-                                action == android.view.MotionEvent.ACTION_POINTER_UP
-                            ) {
-                                userLocation?.let { loc ->
-                                    controller.animateTo(loc)
+                    setOnTouchListener { _, event ->
+                        when (event.pointerCount) {
+                            1 -> true
+                            2 -> {
+                                val action = event.actionMasked
+                                if (action == android.view.MotionEvent.ACTION_UP ||
+                                    action == android.view.MotionEvent.ACTION_POINTER_UP
+                                ) {
+                                    userLocation?.let { loc ->
+                                        controller.animateTo(loc)
+                                    }
                                 }
+                                false
                             }
-                            false
+                            else -> true
                         }
-                        else -> true
                     }
                 }
-            }},
+            },
             modifier = Modifier.fillMaxSize(),
             update = { map ->
                 userLocation?.let { location ->
@@ -148,13 +153,15 @@ fun GoFishScreen() {
                     val marker = Marker(map)
                     marker.position = location
                     marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    marker.icon = ContextCompat.getDrawable(context, R.drawable.ic_launcher_foreground)
+                    marker.icon =
+                        ContextCompat.getDrawable(context, R.drawable.ic_launcher_foreground)
                     map.overlays.add(marker)
 
-                    val locationOverlay = org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay(
-                        org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider(context),
-                        map
-                    )
+                    val locationOverlay =
+                        org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay(
+                            org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider(context),
+                            map
+                        )
                     locationOverlay.enableMyLocation()
                     map.overlays.add(locationOverlay)
 
@@ -191,7 +198,9 @@ fun GoFishScreen() {
             Text("FishinGo Footer", fontSize = 16.sp)
         }
 
-        // Floating TEST CATCH button (centered over footer)
+        // -------------------------------------------
+        // Floating TEST CATCH button (centered)
+        // -------------------------------------------
         Button(
             onClick = {
                 val user = currentUser ?: run {
@@ -199,21 +208,29 @@ fun GoFishScreen() {
                     return@Button
                 }
 
-                // ✅ OPTION A – REAL GPS (WORKING VERSION, KEPT COMMENTED FOR NOW)
+                // ─────────────────────────────
+                // OPTION A – REAL GPS (KEEPING THIS WORKING PATH COMMENTED FOR LATER)
+                //
                 // val loc = userLocation ?: run {
                 //     Toast.makeText(context, "Location not available yet", Toast.LENGTH_SHORT).show()
                 //     return@Button
                 // }
-
-                // ✅ OPTION B – HARDCODED TEST COORDS (Cluj, near Someșul Mic)
-                val loc = GeoPoint(46.772325, 23.583198)
+                //
+                // val testLat = loc.latitude
+                // val testLon = loc.longitude
+                //
+                // ─────────────────────────────
+                // OPTION B – HARDCODED TEST COORDS (CURRENTLY ACTIVE)
+                // Cluj – bank of Someșul Mic (fake player position)
+                val testLat = 46.772325
+                val testLon = 23.583198
 
                 scope.launch {
-                    // 1) Determine region from these coordinates
+                    // 1) REGION FROM COUNTY
                     val region = getRegionForLocation(
                         context = context,
-                        latitude = loc.latitude,
-                        longitude = loc.longitude
+                        latitude = testLat,
+                        longitude = testLon
                     ) ?: run {
                         Toast.makeText(
                             context,
@@ -223,7 +240,37 @@ fun GoFishScreen() {
                         return@launch
                     }
 
-                    // 2) Get fish list for that region
+                    // 2) WATER WITHIN 50m (using Overpass + geometry)
+                    val nearbyWater = findNearbyWaterBody(
+                        context = context,
+                        latitude = testLat,
+                        longitude = testLon,
+                        radiusMeters = 50
+                    )
+
+                    val distance = nearbyWater?.distanceMeters ?: Double.MAX_VALUE
+                    if (nearbyWater == null || distance > 50.0) {
+                        Toast.makeText(
+                            context,
+                            "No mapped water within 50m – move closer to a river or lake.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@launch
+                    }
+
+                    Toast.makeText(
+                        context,
+                        "Water found at ~${distance.toInt()} m",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    val locationName = nearbyWater.name
+                        ?: when {
+                            nearbyWater.type != null -> "Unnamed ${nearbyWater.type}"
+                            else -> "Nearby water"
+                        }
+
+                    // 3) PICK RANDOM FISH FOR REGION
                     val fishList = fishRegions[region]
                     if (fishList.isNullOrEmpty()) {
                         Toast.makeText(
@@ -236,47 +283,13 @@ fun GoFishScreen() {
 
                     val randomFish = fishList.random()
 
-                    // 3) Check for water using Overpass (search a bit wider so we actually see something)
-                    val nearbyWater = findNearbyWaterBody(
-                        context = context,
-                        latitude = loc.latitude,
-                        longitude = loc.longitude,
-                        radiusMeters = 200   // was 50
-                    )
-
-                    if (nearbyWater == null) {
-                        Toast.makeText(
-                            context,
-                            "No mapped water within ~200m. Try closer to a river or lake.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@launch
-                    }
-
-// Show how far the nearest water is (for debugging)
-                    val distance = nearbyWater.distanceMeters ?: -1.0
-
-                    val locationName = nearbyWater.name
-                        ?: when {
-                            nearbyWater.type != null -> "Unnamed ${nearbyWater.type}"
-                            else -> "Nearby water"
-                        }
-
-// Optional: debug toast with distance
-                    Toast.makeText(
-                        context,
-                        if (distance >= 0) "Nearest water: $locationName (~${distance.toInt()}m away)"
-                        else "Nearest water: $locationName",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    // 4) Build request and send to backend
+                    // 4) SEND CATCH TO BACKEND
                     val request = NewCatchRequest(
                         fishName = randomFish,
                         region = region,
                         locationName = locationName,
-                        latitude = loc.latitude,
-                        longitude = loc.longitude,
+                        latitude = testLat,
+                        longitude = testLon,
                         description = "Catch from $region"
                     )
 
