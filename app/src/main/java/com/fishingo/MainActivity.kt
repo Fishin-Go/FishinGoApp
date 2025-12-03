@@ -38,7 +38,6 @@ class MainActivity : ComponentActivity() {
         conf.osmdroidTileCache = ctx.cacheDir
 
         UserManager.initialize(applicationContext)
-        FishInventoryManager.initialize(applicationContext)
 
         setContent {
             FishinGoTheme {

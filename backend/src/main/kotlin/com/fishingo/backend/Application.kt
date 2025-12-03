@@ -1,12 +1,9 @@
 package com.fishingo.backend
-
+import com.fishingo.backend.controller.catchRoutes
 import com.fishingo.backend.controller.userRoutes
-import com.fishingo.backend.controller.waterBodyRoutes
 import com.fishingo.backend.database.DatabaseFactory
 import com.fishingo.backend.repository.UserRepository
-import com.fishingo.backend.repository.WaterBodyRepository
 import com.fishingo.backend.service.UserService
-import com.fishingo.backend.service.WaterBodyService
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -55,7 +52,6 @@ fun Application.module() {
 
     // 4. Wire repositories + services
     val userService = UserService(UserRepository())
-    val waterBodyService = WaterBodyService(WaterBodyRepository())
 
     // 5. Routes (HTTP endpoints)
     routing {
@@ -65,7 +61,6 @@ fun Application.module() {
         }
 
         userRoutes(userService)
-        waterBodyRoutes(waterBodyService)
-        // catchRoutes(...)  // later
+        catchRoutes()
     }
 }

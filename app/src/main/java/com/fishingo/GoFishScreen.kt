@@ -1,44 +1,33 @@
 package com.fishingo
-import android.location.Location
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.compose.runtime.*
-import org.osmdroid.util.GeoPoint
-import com.google.android.gms.location.LocationServices
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
-import android.content.res.Configuration
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.fishingo.ui.theme.FishinGoTheme
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.fishingo.network.ApiClient
+import com.fishingo.network.NewCatchRequest
+import com.google.android.gms.location.LocationServices
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 
@@ -53,7 +42,14 @@ fun GoFishScreen() {
 
     val mapView = remember { MapView(context) }
 
-    // Cerere permisiuni
+    // coroutine + user + fish regions
+    val scope = rememberCoroutineScope()
+    val currentUser by UserManager.currentUser
+    val fishRegions = remember { loadFishRegions(context) }
+
+    var clickCount by remember { mutableStateOf(0) }
+
+    // Request permissions
     LaunchedEffect(Unit) {
         val fineLocation = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -78,7 +74,7 @@ fun GoFishScreen() {
         }
     }
 
-    // Obținerea locației
+    // Get last known location once
     LaunchedEffect(locationPermissionGranted) {
         if (locationPermissionGranted) {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
@@ -89,13 +85,13 @@ fun GoFishScreen() {
         }
     }
 
-    // ✅ Adăugăm un efect care ascultă live locația
+    // Listen for live location updates
     LaunchedEffect(locationPermissionGranted) {
         if (locationPermissionGranted) {
             val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
                 com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-                2000 // actualizare la fiecare 2 secunde
-            ).setMinUpdateDistanceMeters(1f) // dacă te miști măcar 1 metru
+                2000L
+            ).setMinUpdateDistanceMeters(1f)
                 .build()
 
             val locationCallback = object : com.google.android.gms.location.LocationCallback() {
@@ -104,12 +100,10 @@ fun GoFishScreen() {
                     val newGeoPoint = GeoPoint(location.latitude, location.longitude)
                     userLocation = newGeoPoint
 
-                    // 🔥 Centrează harta pe noua locație
                     mapView.controller.animateTo(newGeoPoint)
                 }
             }
 
-            // ✅ Important: folosim context.mainLooper ca să nu crape UI-ul
             fusedLocationClient.requestLocationUpdates(
                 locationRequest,
                 locationCallback,
@@ -120,33 +114,28 @@ fun GoFishScreen() {
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // MapView în Compose
-
-
+        // MapView
         AndroidView(
             factory = { mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 controller.setZoom(18.0)
 
-                // ✅ Corecție: folosim controller local pentru a evita "unresolved reference"
                 val controller = this.controller
 
                 setOnTouchListener { _, event ->
                     when (event.pointerCount) {
-                        1 -> true // blocăm pan complet cu un deget
+                        1 -> true
                         2 -> {
                             val action = event.actionMasked
                             if (action == android.view.MotionEvent.ACTION_UP ||
                                 action == android.view.MotionEvent.ACTION_POINTER_UP
                             ) {
-                                // când utilizatorul termină zoom-ul, recentrăm pe marker
                                 userLocation?.let { loc ->
-                                    // ✅ folosim controller local (nu dă eroare)
                                     controller.animateTo(loc)
                                 }
                             }
-                            false // lăsăm zoom-ul să funcționeze normal
+                            false
                         }
                         else -> true
                     }
@@ -155,18 +144,15 @@ fun GoFishScreen() {
             modifier = Modifier.fillMaxSize(),
             update = { map ->
                 userLocation?.let { location ->
-                    // Centrează harta
                     map.controller.setCenter(location)
                     map.overlays.clear()
 
-                    // Marker personal
                     val marker = Marker(map)
                     marker.position = location
                     marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     marker.icon = ContextCompat.getDrawable(context, R.drawable.ic_launcher_foreground)
                     map.overlays.add(marker)
 
-                    // Overlay locație curentă
                     val locationOverlay = org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay(
                         org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider(context),
                         map
@@ -174,7 +160,6 @@ fun GoFishScreen() {
                     locationOverlay.enableMyLocation()
                     map.overlays.add(locationOverlay)
 
-                    // Centrează automat pe prima locație detectată
                     locationOverlay.runOnFirstFix {
                         activity.runOnUiThread {
                             map.controller.animateTo(locationOverlay.myLocation)
@@ -184,7 +169,7 @@ fun GoFishScreen() {
             }
         )
 
-        // Bara de sus
+        // Top bar
         Box(
             Modifier
                 .fillMaxWidth()
@@ -196,7 +181,7 @@ fun GoFishScreen() {
             Text("🎣 Go Fish", fontSize = 24.sp, color = Color.White)
         }
 
-        // Bara de jos
+        // Bottom bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -207,5 +192,87 @@ fun GoFishScreen() {
         ) {
             Text("FishinGo Footer", fontSize = 16.sp)
         }
+
+        // Show how many times the button was pressed
+        Text(
+            text = "Test clicks: $clickCount",
+            color = Color.White,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = (-80).dp)
+        )
+
+        // Floating TEST CATCH button (centered, half-over footer)
+        Button(
+            onClick = {
+                clickCount++
+
+                val user = currentUser ?: return@Button
+
+                // For now: always Transilvania
+                val region = "Transilvania"
+                val fishList = fishRegions[region]
+
+                if (fishList.isNullOrEmpty()) {
+                    Toast.makeText(context, "No fish list for $region", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                val randomFish = fishList.random()
+                val loc = userLocation
+
+                val request = NewCatchRequest(
+                    fishName = randomFish,
+                    region = region,
+                    locationName = "Unknown water",
+                    latitude = loc?.latitude,
+                    longitude = loc?.longitude,
+                    description = "Test catch from Transilvania button"
+                )
+
+                scope.launch {
+                    try {
+                        val response = ApiClient.catchApi.createCatch(
+                            userId = user.id,
+                            body = request
+                        )
+                        if (response.isSuccessful) {
+                            Toast.makeText(
+                                context,
+                                "Catch sent! (${response.code()})",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Server error: ${response.code()}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Network error: ${e.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = (-25).dp) // half of 50dp footer height
+        ) {
+            Text("TEST CATCH")
+        }
     }
+}
+
+// Helper: load region -> fish list map from res/raw/region_fish.json
+private fun loadFishRegions(context: Context): Map<String, List<String>> {
+    val inputStream = context.resources.openRawResource(R.raw.region_fish)
+    val jsonText = inputStream.bufferedReader().use { it.readText() }
+
+    val gson = Gson()
+    val type = object : TypeToken<Map<String, List<String>>>() {}.type
+    return gson.fromJson(jsonText, type)
 }
