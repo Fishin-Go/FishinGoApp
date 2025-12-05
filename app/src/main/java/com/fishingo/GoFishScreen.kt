@@ -222,8 +222,8 @@ fun GoFishScreen() {
                 // ─────────────────────────────
                 // OPTION B – HARDCODED TEST COORDS (CURRENTLY ACTIVE)
                 // Cluj – bank of Someșul Mic (fake player position)
-                val testLat = 46.772325
-                val testLon = 23.583198
+                val testLat =  44.3459844
+                val testLon = 25.8853924
 
                 scope.launch {
                     // 1) REGION FROM COUNTY
@@ -241,28 +241,26 @@ fun GoFishScreen() {
                     }
 
                     // 2) WATER WITHIN 50m (using Overpass + geometry)
-                    val nearbyWater = findNearbyWaterBody(
-                        context = context,
+                    // 3) Check for water within ~67m using offline SQLite
+                    android.util.Log.d(
+                        "WATER_TEST",
+                        "Button pressed with test coords: lat=$testLat, lon=$testLon"
+                    )
+                    val nearbyWater = WaterDatabaseManager.findNearestWater(
                         latitude = testLat,
                         longitude = testLon,
-                        radiusMeters = 50
+                        radiusMeters = 67.0   // or 60.0 if you prefer stricter
                     )
 
                     val distance = nearbyWater?.distanceMeters ?: Double.MAX_VALUE
-                    if (nearbyWater == null || distance > 50.0) {
+                    if (nearbyWater == null || distance > 67.0) {
                         Toast.makeText(
                             context,
-                            "No mapped water within 50m – move closer to a river or lake.",
+                            "No mapped water within ~67m – move closer to a river or lake.",
                             Toast.LENGTH_LONG
                         ).show()
                         return@launch
                     }
-
-                    Toast.makeText(
-                        context,
-                        "Water found at ~${distance.toInt()} m",
-                        Toast.LENGTH_SHORT
-                    ).show()
 
                     val locationName = nearbyWater.name
                         ?: when {

@@ -1,1 +1,5 @@
 /build
+# Ignore offline water database
+app/src/main/res/raw/water_skeleton.sqlite
+app/src/main/res/raw/*.sqlite
+*.sqlite

@@ -73,6 +73,9 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.0")
     implementation("androidx.compose.material:material-icons-extended")
 
+    //Lifecycle
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    
     // Maps
     implementation("org.osmdroid:osmdroid-android:6.1.14")
 
