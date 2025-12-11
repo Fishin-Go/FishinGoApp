@@ -1,5 +1,6 @@
 package com.fishingo
-
+//import androidx.lifecycle.lifecycleScope
+////import kotlinx.coroutines.launch
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
@@ -38,8 +39,7 @@ class MainActivity : ComponentActivity() {
         conf.osmdroidTileCache = ctx.cacheDir
 
         UserManager.initialize(applicationContext)
-        FishInventoryManager.initialize(applicationContext)
-
+        WaterDatabaseManager.initialize(applicationContext)
         setContent {
             FishinGoTheme {
                 AppNavigator()

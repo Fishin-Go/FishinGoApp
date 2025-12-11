@@ -1,5 +1,8 @@
 package com.fishingo.backend.dto
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class CatchResponse(
     val id: Int,
     val fishName: String,
