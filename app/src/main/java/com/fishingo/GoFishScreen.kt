@@ -1,5 +1,8 @@
 package com.fishingo
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.delay
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -9,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +50,14 @@ fun GoFishScreen() {
     val currentUser by UserManager.currentUser
     val fishRegions = remember { loadFishRegions(context) }
 
+    var showFishPopup by remember { mutableStateOf(false) }
+    var popupFishName by remember { mutableStateOf<String?>(null) }
+    var popupFishImageRes by remember { mutableStateOf<Int?>(null) }
+
+    // 🔹 NEW: text state for manual test coordinates
+    var manualLat by remember { mutableStateOf("") }
+    var manualLon by remember { mutableStateOf("") }
+
     // -----------------------------
     //  Permissions
     // -----------------------------
@@ -71,6 +83,11 @@ fun GoFishScreen() {
         } else {
             locationPermissionGranted = true
         }
+    }
+
+    // Make sure fish info is loaded (for popup)
+    LaunchedEffect(Unit) {
+        FishInfoManager.load(context)
     }
 
     // Get last known location once
@@ -198,132 +215,257 @@ fun GoFishScreen() {
             Text("FishinGo Footer", fontSize = 16.sp)
         }
 
-        // -------------------------------------------
-        // Floating TEST CATCH button (centered)
-        // -------------------------------------------
-        Button(
-            onClick = {
-                val user = currentUser ?: run {
-                    Toast.makeText(context, "Not logged in", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
+        // ==========================================
+        //  NEW: Manual lat/lon inputs + TEST button
+        //  (Everything is grouped in a Column at the bottom)
+        // ==========================================
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 60.dp), // a bit above the footer bar
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Small helper text so Future-You remembers what this is
+            Text(
+                text = "Manual test coordinates (optional)",
+                fontSize = 12.sp,
+                color = Color.LightGray,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
 
-                // ─────────────────────────────
-                // OPTION A – REAL GPS (KEEPING THIS WORKING PATH COMMENTED FOR LATER)
-                //
-                // val loc = userLocation ?: run {
-                //     Toast.makeText(context, "Location not available yet", Toast.LENGTH_SHORT).show()
-                //     return@Button
-                // }
-                //
-                // val testLat = loc.latitude
-                // val testLon = loc.longitude
-                //
-                // ─────────────────────────────
-                // OPTION B – HARDCODED TEST COORDS (CURRENTLY ACTIVE)
-                // Cluj – bank of Someșul Mic (fake player position)
-                val testLat =  44.3459844
-                val testLon = 25.8853924
+            // Row with two text fields: latitude / longitude
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TextField(
+                    value = manualLat,
+                    onValueChange = { manualLat = it },
+                    label = { Text("Latitude") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
 
-                scope.launch {
-                    // 1) REGION FROM COUNTY
-                    val region = getRegionForLocation(
-                        context = context,
-                        latitude = testLat,
-                        longitude = testLon
-                    ) ?: run {
-                        Toast.makeText(
-                            context,
-                            "Could not determine region for this location",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return@launch
+                TextField(
+                    value = manualLon,
+                    onValueChange = { manualLon = it },
+                    label = { Text("Longitude") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // -------------------------------------------
+            // TEST CATCH button (uses manual coords if set)
+            // -------------------------------------------
+            Button(
+                onClick = {
+                    val user = currentUser ?: run {
+                        Toast.makeText(context, "Not logged in", Toast.LENGTH_SHORT).show()
+                        return@Button
                     }
 
-                    // 2) WATER WITHIN 50m (using Overpass + geometry)
-                    // 3) Check for water within ~67m using offline SQLite
-                    android.util.Log.d(
-                        "WATER_TEST",
-                        "Button pressed with test coords: lat=$testLat, lon=$testLon"
-                    )
-                    val nearbyWater = WaterDatabaseManager.findNearestWater(
-                        latitude = testLat,
-                        longitude = testLon,
-                        radiusMeters = 67.0   // or 60.0 if you prefer stricter
-                    )
+                    // 1) Decide which coordinates to use:
+                    //    - if BOTH manual fields are non-empty and valid → use those
+                    //    - otherwise → fallback to real GPS location
+                    val useManual =
+                        manualLat.isNotBlank() && manualLon.isNotBlank()
 
-                    val distance = nearbyWater?.distanceMeters ?: Double.MAX_VALUE
-                    if (nearbyWater == null || distance > 67.0) {
-                        Toast.makeText(
-                            context,
-                            "No mapped water within ~67m – move closer to a river or lake.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@launch
+                    val (testLat, testLon) = if (useManual) {
+                        val lat = manualLat.toDoubleOrNull()
+                        val lon = manualLon.toDoubleOrNull()
+
+                        if (lat == null || lon == null) {
+                            Toast.makeText(
+                                context,
+                                "Invalid manual coordinates",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@Button
+                        }
+                        lat to lon
+                    } else {
+                        val loc = userLocation ?: run {
+                            Toast.makeText(
+                                context,
+                                "Location not available yet",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@Button
+                        }
+                        loc.latitude to loc.longitude
                     }
 
-                    val locationName = nearbyWater.name
-                        ?: when {
-                            nearbyWater.type != null -> "Unnamed ${nearbyWater.type}"
-                            else -> "Nearby water"
+                    scope.launch {
+                        // 2) REGION FROM COUNTY
+                        val region = getRegionForLocation(
+                            context = context,
+                            latitude = testLat,
+                            longitude = testLon
+                        ) ?: run {
+                            Toast.makeText(
+                                context,
+                                "Could not determine region for this location",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@launch
                         }
 
-                    // 3) PICK RANDOM FISH FOR REGION
-                    val fishList = fishRegions[region]
-                    if (fishList.isNullOrEmpty()) {
-                        Toast.makeText(
-                            context,
-                            "No fish data for region $region",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return@launch
-                    }
-
-                    val randomFish = fishList.random()
-
-                    // 4) SEND CATCH TO BACKEND
-                    val request = NewCatchRequest(
-                        fishName = randomFish,
-                        region = region,
-                        locationName = locationName,
-                        latitude = testLat,
-                        longitude = testLon,
-                        description = "Catch from $region"
-                    )
-
-                    try {
-                        val response = ApiClient.catchApi.createCatch(
-                            userId = user.id,
-                            body = request
+                        // 3) Check for water within ~67m using offline SQLite
+                        android.util.Log.d(
+                            "WATER_TEST",
+                            "Button pressed with coords: lat=$testLat, lon=$testLon"
+                        )
+                        val nearbyWater = WaterDatabaseManager.findNearestWater(
+                            latitude = testLat,
+                            longitude = testLon,
+                            radiusMeters = 67.0   // or 60.0 if you prefer stricter
                         )
 
-                        if (response.isSuccessful) {
+                        val distance = nearbyWater?.distanceMeters ?: Double.MAX_VALUE
+                        if (nearbyWater == null || distance > 67.0) {
                             Toast.makeText(
                                 context,
-                                "You caught $randomFish at $locationName!",
+                                "No mapped water within ~67m – move closer to a river or lake.",
                                 Toast.LENGTH_LONG
                             ).show()
-                        } else {
+                            return@launch
+                        }
+
+                        val locationName = nearbyWater.name
+                            ?: when {
+                                nearbyWater.type != null -> "Unnamed ${nearbyWater.type}"
+                                else -> "Nearby water"
+                            }
+
+                        // 4) PICK RANDOM FISH FOR REGION
+                        val fishList = fishRegions[region]
+                        if (fishList.isNullOrEmpty()) {
                             Toast.makeText(
                                 context,
-                                "Server error: ${response.code()}",
+                                "No fish data for region $region",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@launch
+                        }
+
+                        val randomFish = fishList.random()
+
+                        // 5) SEND CATCH TO BACKEND
+                        val request = NewCatchRequest(
+                            fishName = randomFish,
+                            region = region,
+                            locationName = locationName,
+                            latitude = testLat,
+                            longitude = testLon,
+                            description = "Catch from $region"
+                        )
+
+                        try {
+                            val response = ApiClient.catchApi.createCatch(
+                                userId = user.id,
+                                body = request
+                            )
+
+                            if (response.isSuccessful) {
+                                // Toast as before
+                                Toast.makeText(
+                                    context,
+                                    "You caught $randomFish at $locationName!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                // 🔹 look up fish info (latin name + image) from FishInfoManager
+                                val info = FishInfoManager.getInfo(randomFish)
+                                val imgRes = info?.let {
+                                    FishInfoManager.getDrawableId(
+                                        context,
+                                        it.image
+                                    )
+                                }
+
+                                if (imgRes != null) {
+                                    popupFishName = randomFish
+                                    popupFishImageRes = imgRes
+                                    showFishPopup = true
+
+                                    // hide after 5 seconds
+                                    scope.launch {
+                                        delay(5000L)
+                                        showFishPopup = false
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Server error: ${response.code()}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(
+                                context,
+                                "Network error: ${e.message}",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            "Network error: ${e.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
                     }
                 }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = (-25).dp)
-        ) {
-            Text("TEST CATCH")
+            ) {
+                Text("TEST CATCH")
+            }
+        }
+
+        // =========================
+        //  Fish popup (unchanged)
+        // =========================
+        if (showFishPopup && popupFishImageRes != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x80000000)), // semi-transparent black
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .background(
+                            Color.White,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    popupFishImageRes?.let { resId ->
+                        Image(
+                            painter = painterResource(id = resId),
+                            contentDescription = popupFishName ?: "Caught fish",
+                            modifier = Modifier
+                                .size(180.dp)
+                                .padding(bottom = 12.dp)
+                        )
+                    }
+
+                    Text(
+                        text = popupFishName ?: "Unknown fish",
+                        fontSize = 20.sp,
+                        color = Color(0xFF0D47A1)
+                    )
+
+                    val latin = FishInfoManager.getInfo(popupFishName ?: "")?.latin
+                    if (latin != null) {
+                        Text(
+                            text = latin,
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
         }
     }
 }

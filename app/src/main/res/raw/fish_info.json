@@ -1,0 +1,242 @@
+{
+  "Asprete": {
+    "latin": "Romanichthys valsanicola",
+    "image": "asprete.png",
+    "description": "Fish description for Asprete will go here."
+  },
+  "Babusca": {
+    "latin": "Rutilus rutilus",
+    "image": "babusca.png",
+    "description": "Fish description for Babusca will go here."
+  },
+  "Biban": {
+    "latin": "Perca fluviatilis",
+    "image": "biban.png",
+    "description": "Fish description for Biban will go here."
+  },
+  "Boarte": {
+    "latin": "Rhodeus amarus",
+    "image": "boarte.png",
+    "description": "Fish description for Boarte will go here."
+  },
+  "Boistean": {
+    "latin": "Phoxinus phoxinus",
+    "image": "boistean.png",
+    "description": "Fish description for Boistean will go here."
+  },
+  "Cambula": {
+    "latin": "Platichthys flesus",
+    "image": "cambula.png",
+    "description": "Fish description for Cambula will go here."
+  },
+  "Caras": {
+    "latin": "Carassius carassius",
+    "image": "caras.png",
+    "description": "Fish description for Caras will go here."
+  },
+  "Caras-argintiu": {
+    "latin": "Carassius gibelio",
+    "image": "caras_argintiu.png",
+    "description": "Fish description for Caras-argintiu will go here."
+  },
+  "Caras-auriu": {
+    "latin": "Carassius auratus",
+    "image": "caras_auriu.png",
+    "description": "Fish description for Caras-auriu will go here."
+  },
+  "Cegar": {
+    "latin": "Acipenser ruthenus",
+    "image": "cegar.png",
+    "description": "Fish description for Cegar will go here."
+  },
+  "Chefal auriu": {
+    "latin": "Chelon auratus",
+    "image": "chefal_auriu.png",
+    "description": "Fish description for Chefal auriu will go here."
+  },
+  "Clean": {
+    "latin": "Squalius cephalus",
+    "image": "clean.png",
+    "description": "Fish description for Clean will go here."
+  },
+  "Clean mic": {
+    "latin": "Leuciscus leuciscus",
+    "image": "clean_mic.png",
+    "description": "Fish description for Clean mic will go here."
+  },
+  "Crap": {
+    "latin": "Cyprinus carpio",
+    "image": "crap.png",
+    "description": "Fish description for Crap will go here."
+  },
+  "Crap argintiu nobil": {
+    "latin": "Hypophthalmichthys nobilis",
+    "image": "crap_argintiu_nobil.png",
+    "description": "Fish description for Crap argintiu nobil will go here."
+  },
+  "Fântânel": {
+    "latin": "Salvelinus fontinalis",
+    "image": "fantanel.png",
+    "description": "Fish description for Fântânel will go here."
+  },
+  "Gingirică": {
+    "latin": "Clupeonella cultriventris",
+    "image": "gingirica.png",
+    "description": "Fish description for Gingirică will go here."
+  },
+  "Guvid de baltă": {
+    "latin": "Ponticola kessleri",
+    "image": "guvid_de_balata.png",
+    "description": "Fish description for Guvid de baltă will go here."
+  },
+  "Guvid de mare": {
+    "latin": "Neogobius melanostomus",
+    "image": "guvid_de_mare.png",
+    "description": "Fish description for Guvid de mare will go here."
+  },
+  "Hanost": {
+    "latin": "Mesogobius batrachocephalus",
+    "image": "hanost.png",
+    "description": "Fish description for Hanost will go here."
+  },
+  "Lin": {
+    "latin": "Tinca tinca",
+    "image": "lin.png",
+    "description": "Fish description for Lin will go here."
+  },
+  "Lipan": {
+    "latin": "Thymallus thymallus",
+    "image": "lipan.png",
+    "description": "Fish description for Lipan will go here."
+  },
+  "Mihalț": {
+    "latin": "Lota lota",
+    "image": "mihalt.png",
+    "description": "Fish description for Mihalț will go here."
+  },
+  "Morun": {
+    "latin": "Huso huso",
+    "image": "morun.png",
+    "description": "Fish description for Morun will go here."
+  },
+  "Morunaș": {
+    "latin": "Vimba vimba",
+    "image": "morunas.png",
+    "description": "Fish description for Morunaș will go here."
+  },
+  "Mreană": {
+    "latin": "Barbus barbus",
+    "image": "mreana.png",
+    "description": "Fish description for Mreană will go here."
+  },
+  "Murgoi bălțat": {
+    "latin": "Pseudorasbora parva",
+    "image": "murgoi_baltat.png",
+    "description": "Fish description for Murgoi bălțat will go here."
+  },
+  "Nisetru": {
+    "latin": "Acipenser gueldenstaedtii",
+    "image": "nisetru.png",
+    "description": "Fish description for Nisetru will go here."
+  },
+  "Obleț": {
+    "latin": "Alburnus alburnus",
+    "image": "oblet.png",
+    "description": "Fish description for Obleț will go here."
+  },
+  "Ostreinos": {
+    "latin": "Chelon saliens",
+    "image": "ostreinos.png",
+    "description": "Fish description for Ostreinos will go here."
+  },
+  "Păstrăv curcubeu": {
+    "latin": "Oncorhynchus mykiss",
+    "image": "pastrav_curcubeu.png",
+    "description": "Fish description for Păstrăv curcubeu will go here."
+  },
+  "Păstrăv de munte": {
+    "latin": "Salmo trutta",
+    "image": "pastrav_de_munte.png",
+    "description": "Fish description for Păstrăv de munte will go here."
+  },
+  "Păstrugă": {
+    "latin": "Acipenser stellatus",
+    "image": "pastruga.png",
+    "description": "Fish description for Păstrugă will go here."
+  },
+  "Plătică": {
+    "latin": "Abramis brama",
+    "image": "platica.png",
+    "description": "Fish description for Plătică will go here."
+  },
+  "Platarin": {
+    "latin": "Chelon ramada",
+    "image": "platarin.png",
+    "description": "Fish description for Platarin will go here."
+  },
+  "Plevușcă": {
+    "latin": "Leucaspius delineatus",
+    "image": "plevusca.png",
+    "description": "Fish description for Plevușcă will go here."
+  },
+  "Porcușor": {
+    "latin": "Gobio gobio",
+    "image": "porcusor.png",
+    "description": "Fish description for Porcușor will go here."
+  },
+  "Rizeafcă": {
+    "latin": "Alosa caspia",
+    "image": "rizeafca.png",
+    "description": "Fish description for Rizeafcă will go here."
+  },
+  "Roșioară": {
+    "latin": "Scardinius erythrophthalmus",
+    "image": "rosioara.png",
+    "description": "Fish description for Roșioară will go here."
+  },
+  "Șalău": {
+    "latin": "Sander lucioperca",
+    "image": "salau.png",
+    "description": "Fish description for Șalău will go here."
+  },
+  "Sânger": {
+    "latin": "Hypophthalmichthys molitrix",
+    "image": "sanger.png",
+    "description": "Fish description for Sânger will go here."
+  },
+  "Scumbrie de Dunăre": {
+    "latin": "Alosa immaculata",
+    "image": "scumbrie_de_dunare.png",
+    "description": "Fish description for Scumbrie de Dunăre will go here."
+  },
+  "Șip": {
+    "latin": "Acipenser sturio",
+    "image": "sip.png",
+    "description": "Fish description for Șip will go here."
+  },
+  "Somn": {
+    "latin": "Silurus glanis",
+    "image": "somn.png",
+    "description": "Fish description for Somn will go here."
+  },
+  "Tipar": {
+    "latin": "Misgurnus fossilis",
+    "image": "tipar.png",
+    "description": "Fish description for Tipar will go here."
+  },
+  "Zglavoc": {
+    "latin": "Cottus gobio",
+    "image": "zglavoc.png",
+    "description": "Fish description for Zglavoc will go here."
+  },
+  "Zvârlugă": {
+    "latin": "Cobitis taenia",
+    "image": "zvarluga.png",
+    "description": "Fish description for Zvârlugă will go here."
+  },
+  "Zglavoacă": {
+    "latin": "Babka gymnotrachelus",
+    "image": "zglavoaca.png",
+    "description": "Fish description for Zglavoacă will go here."
+  }
+}
