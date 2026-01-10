@@ -40,6 +40,20 @@ class UserRepository {
         )
     }
 
+    fun update(id: Int, username: String, email: String, passwordHash: String): User? = transaction {
+        val rowsUpdated = UserTable.update({ UserTable.id eq id }) { row ->
+            row[UserTable.username] = username
+            row[UserTable.email] = email
+            row[UserTable.passwordHash] = passwordHash
+        }
+
+        if (rowsUpdated > 0) {
+            findById(id)
+        } else {
+            null
+        }
+    }
+
     private fun rowToUser(row: ResultRow): User =
         User(
             id = row[UserTable.id],

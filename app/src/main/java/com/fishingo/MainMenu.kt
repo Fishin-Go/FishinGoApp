@@ -164,11 +164,14 @@ fun MainMenu(
                                 )
                             }
                         },
-                        onClick = { showProfileMenu = false },
+                        onClick = {
+                            showProfileMenu = false
+                            navController.navigate("account_settings")
+                        },
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
 
-                    // My Profile
+                    // My Profile - NOW NAVIGATES TO PROFILE SCREEN
                     DropdownMenuItem(
                         text = {
                             Row(
@@ -187,7 +190,10 @@ fun MainMenu(
                                 )
                             }
                         },
-                        onClick = { showProfileMenu = false },
+                        onClick = {
+                            showProfileMenu = false
+                            navController.navigate("profile")
+                        },
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
 
