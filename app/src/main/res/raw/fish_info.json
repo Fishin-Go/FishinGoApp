@@ -2,241 +2,241 @@
   "Asprete": {
     "latin": "Romanichthys valsanicola",
     "image": "asprete.png",
-    "description": "Fish description for Asprete will go here."
+    "description": "Pește rar endemic României, trăiește în ape reci și limpezi, fiind specie strict protejată."
   },
   "Babusca": {
     "latin": "Rutilus rutilus",
     "image": "babusca.png",
-    "description": "Fish description for Babusca will go here."
+    "description": "Pește comun de apă dulce, adaptabil, întâlnit în lacuri și râuri cu curent lent."
   },
   "Biban": {
     "latin": "Perca fluviatilis",
     "image": "biban.png",
-    "description": "Fish description for Biban will go here."
+    "description": "Pește răpitor de apă dulce, ușor de recunoscut după dungile verticale de pe corp."
   },
   "Boarte": {
     "latin": "Rhodeus amarus",
     "image": "boarte.png",
-    "description": "Fish description for Boarte will go here."
+    "description": "Pește mic de apă dulce, cunoscut pentru reproducerea în scoici."
   },
   "Boistean": {
     "latin": "Phoxinus phoxinus",
     "image": "boistean.png",
-    "description": "Fish description for Boistean will go here."
+    "description": "Pește mic de munte, trăiește în ape reci, limpezi și bine oxigenate."
   },
   "Cambula": {
     "latin": "Platichthys flesus",
     "image": "cambula.png",
-    "description": "Fish description for Cambula will go here."
+    "description": "Pește plat marin, prezent și în ape salmastre și estuare."
   },
   "Caras": {
     "latin": "Carassius carassius",
     "image": "caras.png",
-    "description": "Fish description for Caras will go here."
+    "description": "Pește de apă dulce rezistent, trăiește în bălți și lacuri cu oxigen scăzut."
   },
   "Caras-argintiu": {
     "latin": "Carassius gibelio",
     "image": "caras_argintiu.png",
-    "description": "Fish description for Caras-argintiu will go here."
+    "description": "Specie invazivă, foarte adaptabilă, răspândită în majoritatea apelor dulci."
   },
   "Caras-auriu": {
     "latin": "Carassius auratus",
     "image": "caras_auriu.png",
-    "description": "Fish description for Caras-auriu will go here."
+    "description": "Pește ornamental cunoscut, derivat din specii de caras."
   },
   "Cegar": {
     "latin": "Acipenser ruthenus",
     "image": "cegar.png",
-    "description": "Fish description for Cegar will go here."
+    "description": "Sturion de apă dulce, trăiește în Dunăre și afluenți mari."
   },
   "Chefal auriu": {
     "latin": "Chelon auratus",
     "image": "chefal_auriu.png",
-    "description": "Fish description for Chefal auriu will go here."
+    "description": "Pește marin costier, întâlnit și în apele salmastre."
   },
   "Clean": {
     "latin": "Squalius cephalus",
     "image": "clean.png",
-    "description": "Fish description for Clean will go here."
+    "description": "Pește de râu, activ și rezistent, prezent în ape curgătoare variate."
   },
   "Clean mic": {
     "latin": "Leuciscus leuciscus",
     "image": "clean_mic.png",
-    "description": "Fish description for Clean mic will go here."
+    "description": "Pește de râu de dimensiuni mici, preferă ape curate și curent moderat."
   },
   "Crap": {
     "latin": "Cyprinus carpio",
     "image": "crap.png",
-    "description": "Fish description for Crap will go here."
+    "description": "Pește mare de apă dulce, foarte răspândit și important economic."
   },
   "Crap argintiu nobil": {
     "latin": "Hypophthalmichthys nobilis",
     "image": "crap_argintiu_nobil.png",
-    "description": "Fish description for Crap argintiu nobil will go here."
+    "description": "Pește asiatic de talie mare, consumator de zooplancton."
   },
   "Fântânel": {
     "latin": "Salvelinus fontinalis",
     "image": "fantanel.png",
-    "description": "Fish description for Fântânel will go here."
+    "description": "Pește de munte, preferă ape foarte reci și bine oxigenate."
   },
   "Gingirică": {
     "latin": "Clupeonella cultriventris",
     "image": "gingirica.png",
-    "description": "Fish description for Gingirică will go here."
+    "description": "Pește mic pelagic, trăiește în Dunăre și zonele costiere."
   },
   "Guvid de baltă": {
     "latin": "Ponticola kessleri",
     "image": "guvid_de_balata.png",
-    "description": "Fish description for Guvid de baltă will go here."
+    "description": "Pește de fund, trăiește în ape dulci și salmastre."
   },
   "Guvid de mare": {
     "latin": "Neogobius melanostomus",
     "image": "guvid_de_mare.png",
-    "description": "Fish description for Guvid de mare will go here."
+    "description": "Pește marin bentonic, foarte adaptabil și răspândit."
   },
   "Hanost": {
     "latin": "Mesogobius batrachocephalus",
     "image": "hanost.png",
-    "description": "Fish description for Hanost will go here."
+    "description": "Guvid de talie mare, trăiește pe fundul apelor salmastre."
   },
   "Lin": {
     "latin": "Tinca tinca",
     "image": "lin.png",
-    "description": "Fish description for Lin will go here."
+    "description": "Pește de apă dulce lentică, preferă ape calde și mâloase."
   },
   "Lipan": {
     "latin": "Thymallus thymallus",
     "image": "lipan.png",
-    "description": "Fish description for Lipan will go here."
+    "description": "Pește de munte, trăiește în râuri reci și bine oxigenate."
   },
   "Mihalț": {
     "latin": "Lota lota",
     "image": "mihalt.png",
-    "description": "Fish description for Mihalț will go here."
+    "description": "Singurul pește de apă dulce din familia codului."
   },
   "Morun": {
     "latin": "Huso huso",
     "image": "morun.png",
-    "description": "Fish description for Morun will go here."
+    "description": "Cel mai mare sturion, specie migratoare și strict protejată."
   },
   "Morunaș": {
     "latin": "Vimba vimba",
     "image": "morunas.png",
-    "description": "Fish description for Morunaș will go here."
+    "description": "Pește de râu și apă salmastră, cu migrații sezoniere."
   },
   "Mreană": {
     "latin": "Barbus barbus",
     "image": "mreana.png",
-    "description": "Fish description for Mreană will go here."
+    "description": "Pește de râu cu fund pietros, activ și rezistent."
   },
   "Murgoi bălțat": {
     "latin": "Pseudorasbora parva",
     "image": "murgoi_baltat.png",
-    "description": "Fish description for Murgoi bălțat will go here."
+    "description": "Pește mic invaziv, extrem de adaptabil."
   },
   "Nisetru": {
     "latin": "Acipenser gueldenstaedtii",
     "image": "nisetru.png",
-    "description": "Fish description for Nisetru will go here."
+    "description": "Sturion migrator, prezent în Dunăre și Marea Neagră."
   },
   "Obleț": {
     "latin": "Alburnus alburnus",
     "image": "oblet.png",
-    "description": "Fish description for Obleț will go here."
+    "description": "Pește mic de suprafață, foarte răspândit în apele dulci."
   },
   "Ostreinos": {
     "latin": "Chelon saliens",
     "image": "ostreinos.png",
-    "description": "Fish description for Ostreinos will go here."
+    "description": "Pește marin de coastă, întâlnit și în ape salmastre."
   },
   "Păstrăv curcubeu": {
     "latin": "Oncorhynchus mykiss",
     "image": "pastrav_curcubeu.png",
-    "description": "Fish description for Păstrăv curcubeu will go here."
+    "description": "Specie introdusă, crescută frecvent în păstrăvării."
   },
   "Păstrăv de munte": {
     "latin": "Salmo trutta",
     "image": "pastrav_de_munte.png",
-    "description": "Fish description for Păstrăv de munte will go here."
+    "description": "Pește de munte, indicator al apelor curate."
   },
   "Păstrugă": {
     "latin": "Acipenser stellatus",
     "image": "pastruga.png",
-    "description": "Fish description for Păstrugă will go here."
+    "description": "Sturion migrator cu corp alungit."
   },
   "Plătică": {
     "latin": "Abramis brama",
     "image": "platica.png",
-    "description": "Fish description for Plătică will go here."
+    "description": "Pește de apă dulce, trăiește în lacuri și râuri lente."
   },
   "Platarin": {
     "latin": "Chelon ramada",
     "image": "platarin.png",
-    "description": "Fish description for Platarin will go here."
+    "description": "Chefal marin, prezent și în estuare."
   },
   "Plevușcă": {
     "latin": "Leucaspius delineatus",
     "image": "plevusca.png",
-    "description": "Fish description for Plevușcă will go here."
+    "description": "Pește mic de baltă, sensibil la poluare."
   },
   "Porcușor": {
     "latin": "Gobio gobio",
     "image": "porcusor.png",
-    "description": "Fish description for Porcușor will go here."
+    "description": "Pește mic de fund, trăiește în râuri curate."
   },
   "Rizeafcă": {
     "latin": "Alosa caspia",
     "image": "rizeafca.png",
-    "description": "Fish description for Rizeafcă will go here."
+    "description": "Pește migrator din familia heringilor."
   },
   "Roșioară": {
     "latin": "Scardinius erythrophthalmus",
     "image": "rosioara.png",
-    "description": "Fish description for Roșioară will go here."
+    "description": "Pește de apă dulce, recunoscut după înotătoarele roșii."
   },
   "Șalău": {
     "latin": "Sander lucioperca",
     "image": "salau.png",
-    "description": "Fish description for Șalău will go here."
+    "description": "Pește răpitor de talie mare, apreciat pentru carne."
   },
   "Sânger": {
     "latin": "Hypophthalmichthys molitrix",
     "image": "sanger.png",
-    "description": "Fish description for Sânger will go here."
+    "description": "Pește asiatic de apă dulce, consumator de fitoplancton."
   },
   "Scumbrie de Dunăre": {
     "latin": "Alosa immaculata",
     "image": "scumbrie_de_dunare.png",
-    "description": "Fish description for Scumbrie de Dunăre will go here."
+    "description": "Pește migrator, intră din mare în Dunăre pentru reproducere."
   },
   "Șip": {
     "latin": "Acipenser sturio",
     "image": "sip.png",
-    "description": "Fish description for Șip will go here."
+    "description": "Sturion rar, specie strict protejată."
   },
   "Somn": {
     "latin": "Silurus glanis",
     "image": "somn.png",
-    "description": "Fish description for Somn will go here."
+    "description": "Cel mai mare pește de apă dulce din Europa."
   },
   "Tipar": {
     "latin": "Misgurnus fossilis",
     "image": "tipar.png",
-    "description": "Fish description for Tipar will go here."
+    "description": "Pește de mlaștină, rezistent la oxigen scăzut."
   },
   "Zglavoc": {
     "latin": "Cottus gobio",
     "image": "zglavoc.png",
-    "description": "Fish description for Zglavoc will go here."
+    "description": "Pește mic de munte, trăiește pe fundul apelor reci."
   },
   "Zvârlugă": {
     "latin": "Cobitis taenia",
     "image": "zvarluga.png",
-    "description": "Fish description for Zvârlugă will go here."
+    "description": "Pește mic de fund, preferă substrat nisipos."
   },
   "Zglavoacă": {
     "latin": "Babka gymnotrachelus",
     "image": "zglavoaca.png",
-    "description": "Fish description for Zglavoacă will go here."
+    "description": "Guvid de apă dulce și salmastră, specie invazivă."
   }
 }

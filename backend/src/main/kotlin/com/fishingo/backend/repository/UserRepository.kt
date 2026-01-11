@@ -2,7 +2,11 @@ package com.fishingo.backend.repository
 
 import com.fishingo.backend.model.User
 import com.fishingo.backend.model.UserTable
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class UserRepository {
@@ -38,6 +42,26 @@ class UserRepository {
             email = email,
             passwordHash = passwordHash
         )
+    }
+
+    /**
+     * Updates the user row in the users table.
+     * Returns the updated user, or null if no row was updated (user not found).
+     */
+    fun update(id: Int, username: String, email: String, passwordHash: String): User? = transaction {
+        val updatedCount = UserTable.update({ UserTable.id eq id }) {
+            it[UserTable.username] = username
+            it[UserTable.email] = email
+            it[UserTable.passwordHash] = passwordHash
+        }
+
+        if (updatedCount == 0) return@transaction null
+
+        // Return the updated user
+        UserTable
+            .select { UserTable.id eq id }
+            .singleOrNull()
+            ?.let { rowToUser(it) }
     }
 
     private fun rowToUser(row: ResultRow): User =
