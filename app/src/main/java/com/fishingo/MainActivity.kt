@@ -1,6 +1,5 @@
 package com.fishingo
-//import androidx.lifecycle.lifecycleScope
-////import kotlinx.coroutines.launch
+
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
@@ -73,5 +72,7 @@ fun AppNavigator() {
         }
         composable("go_fish") { GoFishScreen() }
         composable("inventory") { FishnetScreen(navController = navController) }
+        composable("profile") { ProfileScreen(navController = navController) }
+        composable("account_settings") { AccountSettingsScreen(navController = navController) }
     }
 }

@@ -2,6 +2,7 @@ package com.fishingo.backend.controller
 
 import com.fishingo.backend.dto.LoginRequest
 import com.fishingo.backend.dto.RegisterRequest
+import com.fishingo.backend.dto.UpdateUserRequest
 import com.fishingo.backend.dto.UserResponse
 import com.fishingo.backend.service.UserService
 import io.ktor.http.*
@@ -13,6 +14,11 @@ import io.ktor.server.routing.*
 fun Route.userRoutes(
     userService: UserService = UserService()
 ) {
+    // ✅ TEMP: sanity check that PUT routes work at all (remove later)
+    put("/__put_test") {
+        call.respondText("PUT is reachable ✅", status = HttpStatusCode.OK)
+    }
+
     // GET /users  (list all users)
     get("/users") {
         val users = userService.getAllUsers()
@@ -61,7 +67,6 @@ fun Route.userRoutes(
         )
 
         if (user == null) {
-            // Email already used
             call.respondText(
                 text = "Email is already registered",
                 status = HttpStatusCode.Conflict
@@ -95,6 +100,38 @@ fun Route.userRoutes(
                     username = user.username,
                     email = user.email
                 )
+            )
+        }
+    }
+
+    // ✅ PUT /users/{id} - Update user
+    put("/users/{id}") {
+        val id = call.parameters["id"]?.toIntOrNull()
+        if (id == null) {
+            call.respondText("Invalid id", status = HttpStatusCode.BadRequest)
+            return@put
+        }
+
+        val body = call.receive<UpdateUserRequest>()
+
+        try {
+            val updatedUser = userService.updateUser(id, body)
+            call.respond(updatedUser)
+        } catch (e: IllegalArgumentException) {
+            // includes: "Current password required..." or other bad request cases
+            call.respondText(
+                text = e.message ?: "Bad request",
+                status = HttpStatusCode.BadRequest
+            )
+        } catch (e: SecurityException) {
+            call.respondText(
+                text = "Current password is incorrect",
+                status = HttpStatusCode.Unauthorized
+            )
+        } catch (e: IllegalStateException) {
+            call.respondText(
+                text = e.message ?: "Conflict",
+                status = HttpStatusCode.Conflict
             )
         }
     }
